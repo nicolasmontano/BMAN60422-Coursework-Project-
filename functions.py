@@ -51,7 +51,7 @@ def load_data(file):
     return train_file
 
 #Time series split
-def time_series_split(train_per=0.9, valid_per=0, data):
+def time_series_split(data,train_per=0.9, valid_per=0):
   test_per=1-train_per-valid_per
 
   days=(data['Date'].max()-data['Date'].min()).days+1
@@ -91,7 +91,7 @@ def time_series_split(train_per=0.9, valid_per=0, data):
   return train, val, test
 
 #Time series split for grid search
-def time_series_split_cv(train_per=0.9, splits=1,data):
+def time_series_split_cv(data,train_per=0.9, splits=1):
     '''
     Split for cv
     '''
