@@ -153,5 +153,11 @@ def def_pipeline(model,numeric,categoric):
   return reg
 
 
-
+#Metrics
+def rmspe(y, y_pred):
+    '''
+    Compute Root Mean Square Percentage Error between two arrays.
+    '''
+    loss = np.sqrt(np.mean(np.square((y - y_pred) / y)))
+    return loss
 
