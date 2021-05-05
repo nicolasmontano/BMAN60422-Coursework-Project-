@@ -50,9 +50,47 @@ def load_data(file):
     
     return train_file
 
-
-
 #Time series split
+def time_series_split(train_per=0.9, valid_per=0, data=train_file):
+  test_per=1-train_per-valid_per
+
+  days=(data['Date'].max()-data['Date'].min()).days+1
+  train_len=(days*train_per)//1
+  valid_len=(days*valid_per)//1
+  test_len=(days*test_per)//1
+  missing=days-sum([train_len,valid_len,test_len])
+  train_len+=missing
+  
+  #train
+  min_date_train=data['Date'].min()
+  train=data[(data['Date']>=min_date_train) & (data['Date']<=min_date_train+dt.timedelta(train_len-1))]
+  #validation
+  min_date_valid=train['Date'].max() #it is the max date
+  val=data[(data['Date']>min_date_valid) & (data['Date']<=min_date_valid+dt.timedelta(valid_len))]
+
+  #test
+  if valid_per>0:
+    min_date_test=val['Date'].max()
+  else:
+    min_date_test=train['Date'].max() 
+
+  test=data[(data['Date']>min_date_test) & (data['Date']<=min_date_test+dt.timedelta(test_len))]
+
+  train_days= (train['Date'].max()-train['Date'].min()).days+1
+  val_days=(val['Date'].max()-val['Date'].min()).days+1
+  test_days=(test['Date'].max()-test['Date'].min()).days+1
+  data_days=(data['Date'].max()-data['Date'].min()).days+1
+
+  print('Train min {} and max {}, days:{}'.format(train['Date'].min(), train['Date'].max(), train_days))
+  print('Val min {} and max {}, days:{}'.format(val['Date'].min(), val['Date'].max(), val_days))
+  print('Test min {} and max {}, days:{}'.format(test['Date'].min(), test['Date'].max(), test_days))
+  print('Data min {} and max {}, days:{}'.format(data['Date'].min(), data['Date'].max(), data_days))
+  print('train : {:2.2%}, val  {:2.2%} and test  {:2.2%}'.format(train_days/data_days,val_days/data_days,test_days/data_days))
+
+
+  return train, val, test
+
+#Time series split for grid search
 def time_series_split_cv(train_per=0.9, data=train_file, splits=1):
     '''
     Split for cv
