@@ -21,11 +21,10 @@ from sklearn.compose import ColumnTransformer
 #models
 from sklearn.linear_model import Ridge,Lasso
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-import xgboost as xgb
 #model selection
 from sklearn.model_selection import GridSearchCV
 from sklearn.model_selection import  RandomizedSearchCV
-from sklearn.metrics import make_scorer
+from sklearn.metrics import make_scorer, mean_squared_error as mse
 from sklearn.model_selection import ShuffleSplit 
 import warnings
 warnings.filterwarnings('ignore')
@@ -158,6 +157,54 @@ def rmspe(y, y_pred):
     '''
     Compute Root Mean Square Percentage Error between two arrays.
     '''
-    loss = np.sqrt(np.mean(np.square((y - y_pred) / y)))
+    loss = np.sqrt(np.mean(np.square(y_pred-y_test)))
     return loss
 
+def calculate_metrics(y_pred,y_test):
+  y_res=pd.concat([pd.DataFrame(y_test).reset_index(drop=True),pd.DataFrame(y_pred).reset_index(drop=True)],axis=1)
+  y_res.columns=['y_test','y_pred']
+  rmse=np.sqrt(mse(y_res['y_test'],y_res['y_pred']))
+
+  percentage= y_res[y_res['y_test']!=0]
+  rmspe =  np.sqrt(np.mean(((percentage['y_pred']-percentage['y_test'])/percentage['y_test'])**2))
+  mape=np.mean(np.abs((percentage['y_pred']-percentage['y_test'])/percentage['y_test'])) 
+
+  return {'RMSE':rmse,'RMSPE':rmspe,'MAPE':mape} 
+
+def downcast_dtypes(df):
+    float_cols = [c for c in df if df[c].dtype == "float64"]
+    int_cols = [c for c in df if df[c].dtype in ["int64", "int32"]]
+    df[float_cols] = df[float_cols].astype(np.float32)
+    df[int_cols] = df[int_cols].astype(np.int32)
+    return df
+'''
+-----------------FEATURE ENGINEERING-----
+'''
+#works only for this 
+def add_lags(cols,lags,df):
+  initial_length=len(df)
+  cols.append('Store')
+  df['remove']='no'
+  #sort by store and date
+  df=df.sort_values(['Store','Date']).reset_index(drop=True)
+
+  for col in cols:
+    for lag in lags:
+      df[col+'_'+str(lag)]=df[col].shift(lag)
+
+      if col=='Store':
+        df['remove']=df.apply(lambda row: np.nan if (row[col]!=row[col+'_'+str(lag)]) else row['remove'],axis=1)
+        df.drop(col+'_'+str(lag),axis=1,inplace=True)
+
+  date_removed=df[df['remove'].isnull()].loc[:,'Date'].unique()
+  count_removed=df[df['remove'].isnull()].loc[:,'Date'].count()
+
+  #drop all nulls
+  df=df[df['remove']=='no']
+
+  #drop addtional cols
+  df.drop('remove',axis=1,inplace=True)
+  
+  final_length=len(df)
+  print('additional deleted rows:{}\n \nDates removed:{}'.format(initial_length-final_length-count_removed,date_removed))
+  return df
